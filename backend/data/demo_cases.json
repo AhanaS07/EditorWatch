@@ -1,0 +1,52 @@
+[
+    {
+      "id": "demo_1",
+      "label": "Pain Mgmt — 47-day 'With Editor' stall",
+      "journal_slug": "ipmt20",
+      "journal_name": "Pain Management",
+      "submission_date": "2025-02-10",
+      "current_status": "With Editor",
+      "notes": "No desk reject received, editor likely hunting for reviewers. Reddit r/academia reports this journal slow in 2025.",
+      "expected_risk": "high"
+    },
+    {
+      "id": "demo_2",
+      "label": "Global Health — Under Review, week 8",
+      "journal_slug": "tgnh20",
+      "journal_name": "Global Health",
+      "submission_date": "2025-01-28",
+      "current_status": "Under Review",
+      "notes": "Two reviewers assigned per EM log. One reviewer late.",
+      "expected_risk": "medium"
+    },
+    {
+      "id": "demo_3",
+      "label": "Postgrad Medicine — Decision In Process, 3 days",
+      "journal_slug": "upsm20",
+      "journal_name": "Postgraduate Medicine",
+      "submission_date": "2024-12-01",
+      "current_status": "Decision in Process",
+      "notes": "Reviews complete. Waiting on AE recommendation to EIC.",
+      "expected_risk": "low"
+    },
+    {
+      "id": "demo_4",
+      "label": "Nursing Mgmt — Major Revision submitted",
+      "journal_slug": "ujnm20",
+      "journal_name": "Journal of Nursing Management",
+      "submission_date": "2024-10-15",
+      "current_status": "Revision Submitted",
+      "notes": "Major revision submitted on 2025-02-01. Now back 'With Editor' for re-review assignment.",
+      "expected_risk": "medium"
+    },
+    {
+      "id": "demo_5",
+      "label": "Health Economics — 90-day 'With Editor' extreme delay",
+      "journal_slug": "nhep20",
+      "journal_name": "Health Economics Policy and Law",
+      "submission_date": "2024-11-01",
+      "current_status": "With Editor",
+      "notes": "Author contacted journal at day 60. Told 'under active consideration'. No status change in EM.",
+      "expected_risk": "severe"
+    }
+  ]
