@@ -1,0 +1,199 @@
+"use client"
+import { useState, useEffect } from "react"
+import { JournalMetrics } from "@/lib/types"
+import { listJournals, getCacheStatus, searchJournals, updateJournalMetrics } from "@/lib/api"
+
+export default function JournalComparator() {
+  const [journals, setJournals] = useState<JournalMetrics[]>([])
+  const [cacheStatus, setCacheStatus] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState("")
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [searching, setSearching] = useState(false)
+
+  const [seedSlug, setSeedSlug] = useState("")
+  const [seedForm, setSeedForm] = useState({
+    name: "", avg_first_decision_days: "",
+    avg_post_review_decision_days: "", acceptance_rate: "", notes: "",
+  })
+  const [seeding, setSeeding] = useState(false)
+  const [seedMsg, setSeedMsg] = useState("")
+
+  async function load() {
+    try {
+      const [j, cs] = await Promise.all([listJournals(), getCacheStatus()])
+      setJournals(j); setCacheStatus(cs)
+    } finally { setLoading(false) }
+  }
+
+  useEffect(() => { load() }, [])
+
+  async function handleSearch() {
+    if (search.length < 2) return
+    setSearching(true); setSearchResults([])
+    try { setSearchResults((await searchJournals(search)).results || []) }
+    finally { setSearching(false) }
+  }
+
+  async function handleSeed(e: React.FormEvent) {
+    e.preventDefault()
+    if (!seedSlug || !seedForm.name || !seedForm.avg_first_decision_days || !seedForm.avg_post_review_decision_days) {
+      setSeedMsg("All required fields must be filled."); return
+    }
+    setSeeding(true); setSeedMsg("")
+    try {
+      await updateJournalMetrics(seedSlug, {
+        name: seedForm.name,
+        avg_first_decision_days:       parseInt(seedForm.avg_first_decision_days),
+        avg_post_review_decision_days: parseInt(seedForm.avg_post_review_decision_days),
+        acceptance_rate: seedForm.acceptance_rate ? parseFloat(seedForm.acceptance_rate) : undefined,
+        notes: seedForm.notes || undefined,
+      })
+      setSeedMsg(`✓ ${seedForm.name} saved.`)
+      setSeedSlug("")
+      setSeedForm({ name: "", avg_first_decision_days: "", avg_post_review_decision_days: "", acceptance_rate: "", notes: "" })
+      load()
+    } catch (e: any) { setSeedMsg(`Error: ${e.message}`) }
+    finally { setSeeding(false) }
+  }
+
+  const summary = cacheStatus?.summary || {}
+
+  return (
+    <div>
+      {/* Summary */}
+      {summary.total && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+          {[
+            { label: "Total journals", val: summary.total, color: "var(--navy)" },
+            { label: "Seeded (fresh)",  val: summary.fresh || 0, color: "#3B6D11" },
+            { label: "Seeded (ok)",     val: summary.ok || 0, color: "#854F0B" },
+            { label: "Need seeding",    val: summary.never_seeded || 0, color: "var(--crimson)" },
+          ].map(({ label, val, color }) => (
+            <div key={label} style={{ background: "var(--surface-alt)", border: "1px solid var(--linen-border)",
+              borderRadius: 6, padding: "12px 16px" }}>
+              <span className="section-label">{label}</span>
+              <div style={{ fontFamily: "var(--font-serif)", fontSize: 20, color }}>{val}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+        {/* Seeded journals list */}
+        <div>
+          <span className="section-label">Seeded journals ({journals.length})</span>
+          {loading ? (
+            <p style={{ color: "var(--ink-muted)", fontSize: 13 }}>Loading...</p>
+          ) : journals.length === 0 ? (
+            <div className="card" style={{ fontSize: 13, color: "var(--ink-muted)" }}>
+              No journals seeded yet. Use the form on the right.
+            </div>
+          ) : (
+            <div className="card" style={{ padding: 0, overflow: "hidden", maxHeight: 480, overflowY: "auto" }}>
+              {journals.map((j, i) => (
+                <div key={j.slug} style={{ padding: "11px 16px",
+                  borderBottom: i < journals.length - 1 ? "1px solid var(--linen-border)" : "none" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                    <div style={{ fontSize: 13, fontFamily: "var(--font-serif)", color: "var(--navy)" }}>{j.name}</div>
+                    {j.acceptance_rate && (
+                      <span style={{ fontSize: 11, color: "var(--ink-muted)", flexShrink: 0, marginLeft: 8 }}>
+                        {Math.round(j.acceptance_rate * 100)}% accept
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--ink-muted)", marginTop: 2 }}>
+                    {j.slug} · first: {j.avg_first_decision_days ?? "—"}d · post-review: {j.avg_post_review_decision_days ?? "—"}d
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Right column */}
+        <div>
+          {/* Seed form */}
+          <span className="section-label">Seed a journal</span>
+          <form className="card" style={{ marginBottom: 16 }} onSubmit={handleSeed}>
+            <p style={{ fontSize: 12, color: "var(--ink-muted)", marginBottom: 14, lineHeight: 1.6 }}>
+              Open the T&F metrics page, read the numbers, enter them here.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+              <div>
+                <label className="section-label">Journal slug *</label>
+                <input placeholder="e.g. ipmt20" value={seedSlug}
+                  onChange={e => setSeedSlug(e.target.value.toLowerCase())} />
+                {seedSlug && (
+                  <p style={{ fontSize: 10, marginTop: 3 }}>
+                    <a href={`https://www.tandfonline.com/journals/${seedSlug}/about-this-journal`}
+                      target="_blank" rel="noopener noreferrer" style={{ color: "var(--navy-light)" }}>
+                      Open T&F metrics page →
+                    </a>
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="section-label">Journal name *</label>
+                <input placeholder="Full journal name" value={seedForm.name}
+                  onChange={e => setSeedForm({ ...seedForm, name: e.target.value })} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <label className="section-label">First decision (days) *</label>
+                  <input type="number" placeholder="incl. desk rejects"
+                    value={seedForm.avg_first_decision_days}
+                    onChange={e => setSeedForm({ ...seedForm, avg_first_decision_days: e.target.value })} />
+                </div>
+                <div>
+                  <label className="section-label">Post-review (days) *</label>
+                  <input type="number" placeholder="excl. desk rejects"
+                    value={seedForm.avg_post_review_decision_days}
+                    onChange={e => setSeedForm({ ...seedForm, avg_post_review_decision_days: e.target.value })} />
+                </div>
+              </div>
+              <div>
+                <label className="section-label">Acceptance rate (e.g. 0.23 = 23%)</label>
+                <input type="number" step="0.01" min="0" max="1" placeholder="optional"
+                  value={seedForm.acceptance_rate}
+                  onChange={e => setSeedForm({ ...seedForm, acceptance_rate: e.target.value })} />
+              </div>
+            </div>
+            {seedMsg && (
+              <p style={{ fontSize: 12, color: seedMsg.startsWith("✓") ? "#3B6D11" : "var(--crimson)", marginTop: 10 }}>
+                {seedMsg}
+              </p>
+            )}
+            <button type="submit" className="btn-primary" disabled={seeding} style={{ width: "100%", marginTop: 14 }}>
+              {seeding ? "Saving..." : "Save metrics"}
+            </button>
+          </form>
+
+          {/* Crossref search */}
+          <span className="section-label">Find a journal slug</span>
+          <div className="card">
+            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+              <input placeholder="Search by journal name..." value={search}
+                onChange={e => setSearch(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleSearch()} style={{ flex: 1 }} />
+              <button className="btn-primary" onClick={handleSearch} disabled={searching}>
+                {searching ? "..." : "Search"}
+              </button>
+            </div>
+            {searchResults.map((r, i) => (
+              <div key={i} style={{ fontSize: 12, padding: "10px 0",
+                borderTop: i > 0 ? "1px solid var(--linen-border)" : "none" }}>
+                <div style={{ fontWeight: 500, color: "var(--navy)", marginBottom: 2 }}>{r.title}</div>
+                <div style={{ color: "var(--ink-muted)" }}>ISSN: {r.issn?.join(", ") || "—"}</div>
+                <div style={{ color: "var(--ink-muted)", marginTop: 2, fontSize: 11 }}>{r.next_step}</div>
+              </div>
+            ))}
+            {!searching && search.length > 1 && searchResults.length === 0 && (
+              <p style={{ fontSize: 12, color: "var(--ink-muted)" }}>No results — try tandfonline.com directly.</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
