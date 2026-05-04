@@ -204,18 +204,138 @@ function SubmissionDetail({ sub, onUpdateStatus, onBack }: {
   )
 }
 
+// ── Disclaimer modal ──────────────────────────────────────────────────────────
+function DisclaimerModal({ onAccept }: { onAccept: () => void }) {
+  const [checked, setChecked] = useState(false)
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 100,
+      background: "rgba(26,39,68,0.72)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      padding: "20px",
+    }}>
+      <div style={{
+        background: "var(--surface-alt)",
+        border: "1px solid var(--linen-border)",
+        borderRadius: 10,
+        width: "100%", maxWidth: 520,
+        padding: "32px 36px",
+        boxShadow: "0 8px 32px rgba(26,39,68,0.18)",
+      }}>
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 20 }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: "50%", flexShrink: 0, marginTop: 2,
+            background: "var(--crimson-light)",
+            border: "1px solid #E8A29A",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <span style={{ color: "var(--crimson)", fontSize: 16, fontWeight: 700 }}>!</span>
+          </div>
+          <div>
+            <h2 style={{
+              fontFamily: "var(--font-serif)", fontSize: 20, color: "var(--navy)",
+              margin: 0, fontWeight: 500,
+            }}>
+              Before you begin
+            </h2>
+            <p style={{ fontSize: 12, color: "var(--ink-muted)", margin: "3px 0 0" }}>
+              EditorWatch — Important notice
+            </p>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div style={{
+          background: "var(--linen)", borderRadius: 6, padding: "16px 18px",
+          marginBottom: 20, fontSize: 13, color: "var(--ink-mid)", lineHeight: 1.75,
+        }}>
+          <p style={{ marginBottom: 10 }}>
+            EditorWatch provides <strong style={{ color: "var(--navy)" }}>predictive estimates only</strong>.
+            All timelines, risk scores, and delay predictions are based on publicly available
+            journal metrics and community-reported data — not live access to Editorial Manager
+            or any Taylor &amp; Francis system.
+          </p>
+          <p style={{ marginBottom: 10 }}>
+            Predictions may be inaccurate. Every journal and submission is different.
+            Use this tool as a <strong style={{ color: "var(--navy)" }}>general guide</strong>,
+            not as a basis for formal complaints or withdrawal decisions.
+          </p>
+          <p style={{ marginBottom: 0 }}>
+            EditorWatch is <strong style={{ color: "var(--navy)" }}>not affiliated with,
+            endorsed by, or connected to Taylor &amp; Francis</strong> in any way.
+            Journal metrics are sourced from publicly accessible T&amp;F pages and may
+            be out of date.
+          </p>
+        </div>
+
+        {/* Checkbox acknowledgement */}
+        <label style={{
+          display: "flex", alignItems: "flex-start", gap: 10,
+          cursor: "pointer", marginBottom: 22,
+        }}>
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={e => setChecked(e.target.checked)}
+            style={{
+              width: 16, height: 16, marginTop: 1, flexShrink: 0,
+              accentColor: "var(--navy)", cursor: "pointer",
+            }}
+          />
+          <span style={{ fontSize: 12, color: "var(--ink-mid)", lineHeight: 1.6 }}>
+            I understand that EditorWatch provides estimates only and is not affiliated
+            with Taylor &amp; Francis. I will not use predictions as a substitute for
+            direct communication with journals.
+          </span>
+        </label>
+
+        {/* Actions */}
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <button
+            className="btn-primary"
+            disabled={!checked}
+            onClick={onAccept}
+            style={{ opacity: checked ? 1 : 0.45, minWidth: 140 }}
+          >
+            I understand — continue →
+          </button>
+        </div>
+
+        <p style={{
+          fontSize: 10, color: "var(--ink-muted)", marginTop: 16,
+          textAlign: "center", letterSpacing: "0.03em",
+        }}>
+          This notice appears each time you open EditorWatch.
+        </p>
+      </div>
+    </div>
+  )
+}
+
 // ── Root app ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [view, setView] = useState<View>("dashboard")
   const [detailId, setDetailId] = useState<string | null>(null)
   const [updateTarget, setUpdateTarget] = useState<SubmissionPredictResponse | null>(null)
   const [cacheStatus, setCacheStatus] = useState<any>(null)
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false)
   const { enriched, loading, loadAll, create, updateStatus, remove } = useDelayPredict()
 
   useEffect(() => {
+    // Use sessionStorage so disclaimer shows every time the browser tab is opened
+    // Change to localStorage if you want once-per-device instead
+    const accepted = sessionStorage.getItem("ew_disclaimer_accepted")
+    if (accepted === "true") setDisclaimerAccepted(true)
     loadAll()
     getCacheStatus().then(setCacheStatus).catch(() => {})
   }, [])
+
+  function handleAcceptDisclaimer() {
+    sessionStorage.setItem("ew_disclaimer_accepted", "true")
+    setDisclaimerAccepted(true)
+  }
 
   function goToDetail(id: string) {
     setDetailId(id); setView("submission-detail")
@@ -336,7 +456,7 @@ export default function App() {
         </div>
       )}
 
-      {view === "decoder" && <StatusDecoder />}
+      {view === "decoder" && <StatusDecoder key="decoder" />}
 
       {view === "templates" && <NudgeTemplate />}
 
@@ -361,6 +481,10 @@ export default function App() {
           onSave={async (id, p) => { await updateStatus(id, p); setUpdateTarget(null) }}
           onClose={() => setUpdateTarget(null)}
         />
+      )}
+
+      {!disclaimerAccepted && (
+        <DisclaimerModal onAccept={handleAcceptDisclaimer} />
       )}
     </div>
   )

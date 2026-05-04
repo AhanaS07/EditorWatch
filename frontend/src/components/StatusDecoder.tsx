@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { EM_STATUSES, EMStatus } from "@/lib/types"
 import { STATUS_GLOSSARY } from "@/lib/statusGlossary"
 import { useChat } from "@/hooks/useChat"
@@ -7,8 +7,25 @@ import { useChat } from "@/hooks/useChat"
 export default function StatusDecoder() {
   const [selected, setSelected] = useState<EMStatus>("With Editor")
   const [question, setQuestion] = useState("")
-  const { response, loading, error, ask } = useChat()
+  const { response, loading, error, ask, setResponse } = useChat()
   const gloss = STATUS_GLOSSARY[selected]
+
+  // Reset chat state whenever the selected status changes
+  useEffect(() => {
+    setQuestion("")
+    setResponse("")
+  }, [selected])
+
+  function handleAsk() {
+    if (!question.trim()) return
+    ask(question, {
+      current_status: selected,
+      status_glossary: {
+        meaning: gloss?.meaning,
+        typical: gloss?.typical,
+      }
+    })
+  }
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 20 }}>
@@ -40,9 +57,9 @@ export default function StatusDecoder() {
         {gloss && (
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
             {[
-              { label: "What it means",       text: gloss.meaning },
-              { label: "Typical duration",     text: gloss.typical },
-              { label: "Community insight",    text: gloss.forum },
+              { label: "What it means",    text: gloss.meaning },
+              { label: "Typical duration", text: gloss.typical },
+              { label: "Community insight",text: gloss.forum },
             ].map(({ label, text }) => (
               <div key={label} className="card">
                 <span className="section-label">{label}</span>
@@ -55,25 +72,24 @@ export default function StatusDecoder() {
         <span className="section-label">Ask the AI advisor</span>
         <div className="card">
           <p style={{ fontSize: 12, color: "var(--ink-muted)", marginBottom: 12, lineHeight: 1.5 }}>
-            Ask anything about this status — what it means, whether to send an inquiry, what comes next.
+            Ask specifically about <strong style={{ color: "var(--navy)" }}>{selected}</strong> — what happens in this stage, whether your wait is normal, what to do next.
           </p>
           <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
             <input
-              placeholder={`e.g. "It's been 45 days With Editor — should I email?"`}
+              placeholder={placeholderFor(selected)}
               value={question}
               onChange={e => setQuestion(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && ask(question, { current_status: selected })}
+              onKeyDown={e => e.key === "Enter" && handleAsk()}
               style={{ flex: 1 }}
             />
-            <button className="btn-primary" disabled={loading}
-              onClick={() => ask(question, { current_status: selected })}>
+            <button className="btn-primary" disabled={loading} onClick={handleAsk}>
               {loading ? "..." : "Ask"}
             </button>
           </div>
           {error && <p style={{ fontSize: 12, color: "var(--crimson)" }}>{error}</p>}
           {response && (
             <div style={{ fontSize: 13, color: "var(--ink-mid)", lineHeight: 1.7,
-              borderTop: "1px solid var(--linen-border)", paddingTop: 14 }}>
+              borderTop: "1px solid var(--linen-border)", paddingTop: 14, whiteSpace: "pre-wrap" }}>
               {response}
             </div>
           )}
@@ -81,4 +97,18 @@ export default function StatusDecoder() {
       </div>
     </div>
   )
+}
+
+function placeholderFor(status: EMStatus): string {
+  const map: Partial<Record<EMStatus, string>> = {
+    "With Editor":               "e.g. It's been 45 days With Editor — is this normal?",
+    "Under Review":              "e.g. One reviewer submitted but the other hasn't — what happens now?",
+    "Required Reviews Complete": "e.g. Reviews complete 2 weeks ago, still no decision — normal?",
+    "Decision in Process":       "e.g. Been in Decision in Process for 10 days — what is the editor doing?",
+    "Minor Revision":            "e.g. Got minor revisions — will it go back to reviewers?",
+    "Major Revision":            "e.g. Major revision — how different is the second review round?",
+    "Revision Submitted":        "e.g. Submitted revision 3 weeks ago, no status change — normal?",
+    "Submitted to Journal":      "e.g. Still Submitted to Journal after 10 days — should I worry?",
+  }
+  return map[status] ?? `e.g. Ask anything about the "${status}" stage`
 }

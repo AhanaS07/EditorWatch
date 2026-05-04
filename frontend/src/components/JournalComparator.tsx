@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import { JournalMetrics } from "@/lib/types"
-import { listJournals, getCacheStatus, searchJournals, updateJournalMetrics } from "@/lib/api"
+import { listJournals, getCacheStatus, searchJournals, updateJournalMetrics, getJournal } from "@/lib/api"
 
 export default function JournalComparator() {
   const [journals, setJournals] = useState<JournalMetrics[]>([])
@@ -12,12 +12,14 @@ export default function JournalComparator() {
   const [searching, setSearching] = useState(false)
 
   const [seedSlug, setSeedSlug] = useState("")
+  const [slugStatus, setSlugStatus] = useState<"unknown" | "exists" | "new">("unknown")
   const [seedForm, setSeedForm] = useState({
     name: "", avg_first_decision_days: "",
     avg_post_review_decision_days: "", acceptance_rate: "", notes: "",
   })
   const [seeding, setSeeding] = useState(false)
   const [seedMsg, setSeedMsg] = useState("")
+  const [seedMsgType, setSeedMsgType] = useState<"success" | "error">("success")
 
   async function load() {
     try {
@@ -28,6 +30,29 @@ export default function JournalComparator() {
 
   useEffect(() => { load() }, [])
 
+  // Check if slug already exists in cache when user finishes typing
+  useEffect(() => {
+    if (!seedSlug || seedSlug.length < 3) { setSlugStatus("unknown"); return }
+    const timer = setTimeout(async () => {
+      try {
+        const existing = await getJournal(seedSlug)
+        // Journal exists — pre-fill form with current values
+        setSeedForm({
+          name: existing.name || "",
+          avg_first_decision_days:       String(existing.avg_first_decision_days ?? ""),
+          avg_post_review_decision_days: String(existing.avg_post_review_decision_days ?? ""),
+          acceptance_rate:               existing.acceptance_rate ? String(existing.acceptance_rate) : "",
+          notes: "",
+        })
+        setSlugStatus("exists")
+      } catch {
+        // 404 or 422 (needs seed) — it's a new entry
+        setSlugStatus("new")
+      }
+    }, 600)
+    return () => clearTimeout(timer)
+  }, [seedSlug])
+
   async function handleSearch() {
     if (search.length < 2) return
     setSearching(true); setSearchResults([])
@@ -35,26 +60,53 @@ export default function JournalComparator() {
     finally { setSearching(false) }
   }
 
+  function prefillFromSearch(result: any) {
+    // Pre-fill the seed form name from a Crossref search result
+    setSeedForm(f => ({ ...f, name: result.title || "" }))
+    setSeedMsg("Journal name pre-filled. Enter the slug and metrics from the T&F page.")
+    setSeedMsgType("success")
+  }
+
+  function validateSeedForm(): string | null {
+    if (!seedSlug.trim()) return "Journal slug is required."
+    if (!seedForm.name.trim()) return "Journal name is required."
+    const fd = parseInt(seedForm.avg_first_decision_days)
+    const pr = parseInt(seedForm.avg_post_review_decision_days)
+    if (isNaN(fd) || fd <= 0) return "First decision days must be a positive number."
+    if (isNaN(pr) || pr <= 0) return "Post-review days must be a positive number."
+    if (fd >= pr) return `First decision (${fd}d) should be less than post-review (${pr}d) — first-decision includes fast desk rejects.`
+    if (seedForm.acceptance_rate) {
+      const ar = parseFloat(seedForm.acceptance_rate)
+      if (isNaN(ar) || ar <= 0 || ar > 1) return "Acceptance rate must be between 0.01 and 1.0 (e.g. 0.23 for 23%)."
+    }
+    return null
+  }
+
   async function handleSeed(e: React.FormEvent) {
     e.preventDefault()
-    if (!seedSlug || !seedForm.name || !seedForm.avg_first_decision_days || !seedForm.avg_post_review_decision_days) {
-      setSeedMsg("All required fields must be filled."); return
-    }
+    const validationError = validateSeedForm()
+    if (validationError) { setSeedMsg(validationError); setSeedMsgType("error"); return }
+
     setSeeding(true); setSeedMsg("")
     try {
-      await updateJournalMetrics(seedSlug, {
-        name: seedForm.name,
+      await updateJournalMetrics(seedSlug.trim().toLowerCase(), {
+        name: seedForm.name.trim(),
         avg_first_decision_days:       parseInt(seedForm.avg_first_decision_days),
         avg_post_review_decision_days: parseInt(seedForm.avg_post_review_decision_days),
         acceptance_rate: seedForm.acceptance_rate ? parseFloat(seedForm.acceptance_rate) : undefined,
         notes: seedForm.notes || undefined,
       })
-      setSeedMsg(`✓ ${seedForm.name} saved.`)
+      const action = slugStatus === "exists" ? "updated" : "saved"
+      setSeedMsg(`✓ ${seedForm.name} ${action} successfully.`)
+      setSeedMsgType("success")
       setSeedSlug("")
+      setSlugStatus("unknown")
       setSeedForm({ name: "", avg_first_decision_days: "", avg_post_review_decision_days: "", acceptance_rate: "", notes: "" })
       load()
-    } catch (e: any) { setSeedMsg(`Error: ${e.message}`) }
-    finally { setSeeding(false) }
+    } catch (e: any) {
+      setSeedMsg(`Error: ${e.message}`)
+      setSeedMsgType("error")
+    } finally { setSeeding(false) }
   }
 
   const summary = cacheStatus?.summary || {}
@@ -92,8 +144,14 @@ export default function JournalComparator() {
           ) : (
             <div className="card" style={{ padding: 0, overflow: "hidden", maxHeight: 480, overflowY: "auto" }}>
               {journals.map((j, i) => (
-                <div key={j.slug} style={{ padding: "11px 16px",
-                  borderBottom: i < journals.length - 1 ? "1px solid var(--linen-border)" : "none" }}>
+                <div key={j.slug}
+                  onClick={() => { setSeedSlug(j.slug) }}
+                  style={{ padding: "11px 16px", cursor: "pointer",
+                    borderBottom: i < journals.length - 1 ? "1px solid var(--linen-border)" : "none",
+                    transition: "background 0.1s" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "var(--linen)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                     <div style={{ fontSize: 13, fontFamily: "var(--font-serif)", color: "var(--navy)" }}>{j.name}</div>
                     {j.acceptance_rate && (
@@ -109,21 +167,42 @@ export default function JournalComparator() {
               ))}
             </div>
           )}
+          <p style={{ fontSize: 11, color: "var(--ink-muted)", marginTop: 8 }}>
+            Click any journal to load it into the edit form →
+          </p>
         </div>
 
         {/* Right column */}
         <div>
-          {/* Seed form */}
-          <span className="section-label">Seed a journal</span>
+          {/* Seed / edit form */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <span className="section-label" style={{ margin: 0 }}>
+              {slugStatus === "exists" ? "Edit existing journal" : "Seed a new journal"}
+            </span>
+            {slugStatus === "exists" && (
+              <span style={{ fontSize: 11, background: "#FEF3E2", color: "#854F0B",
+                border: "1px solid #EF9F27", borderRadius: 4, padding: "2px 8px" }}>
+                Updating existing entry
+              </span>
+            )}
+            {slugStatus === "new" && (
+              <span style={{ fontSize: 11, background: "#EAF3DE", color: "#3B6D11",
+                border: "1px solid #97C459", borderRadius: 4, padding: "2px 8px" }}>
+                New journal
+              </span>
+            )}
+          </div>
+
           <form className="card" style={{ marginBottom: 16 }} onSubmit={handleSeed}>
             <p style={{ fontSize: 12, color: "var(--ink-muted)", marginBottom: 14, lineHeight: 1.6 }}>
               Open the T&F metrics page, read the numbers, enter them here.
+              Submitting an existing slug will update it in place.
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
               <div>
                 <label className="section-label">Journal slug *</label>
                 <input placeholder="e.g. ipmt20" value={seedSlug}
-                  onChange={e => setSeedSlug(e.target.value.toLowerCase())} />
+                  onChange={e => { setSeedSlug(e.target.value.toLowerCase().trim()); setSeedMsg("") }} />
                 {seedSlug && (
                   <p style={{ fontSize: 10, marginTop: 3 }}>
                     <a href={`https://www.tandfonline.com/journals/${seedSlug}/about-this-journal`}
@@ -141,40 +220,52 @@ export default function JournalComparator() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
                   <label className="section-label">First decision (days) *</label>
-                  <input type="number" placeholder="incl. desk rejects"
+                  <input type="number" min={1} placeholder="incl. desk rejects"
                     value={seedForm.avg_first_decision_days}
                     onChange={e => setSeedForm({ ...seedForm, avg_first_decision_days: e.target.value })} />
+                  <p style={{ fontSize: 10, color: "var(--ink-muted)", marginTop: 2 }}>
+                    "From submission to first decision"
+                  </p>
                 </div>
                 <div>
                   <label className="section-label">Post-review (days) *</label>
-                  <input type="number" placeholder="excl. desk rejects"
+                  <input type="number" min={1} placeholder="excl. desk rejects"
                     value={seedForm.avg_post_review_decision_days}
                     onChange={e => setSeedForm({ ...seedForm, avg_post_review_decision_days: e.target.value })} />
+                  <p style={{ fontSize: 10, color: "var(--ink-muted)", marginTop: 2 }}>
+                    "From submission to first post-review decision"
+                  </p>
                 </div>
               </div>
               <div>
-                <label className="section-label">Acceptance rate (e.g. 0.23 = 23%)</label>
-                <input type="number" step="0.01" min="0" max="1" placeholder="optional"
+                <label className="section-label">Acceptance rate (optional — e.g. 0.23 for 23%)</label>
+                <input type="number" step="0.01" min="0.01" max="1"
+                  placeholder="e.g. 0.18"
                   value={seedForm.acceptance_rate}
                   onChange={e => setSeedForm({ ...seedForm, acceptance_rate: e.target.value })} />
               </div>
             </div>
             {seedMsg && (
-              <p style={{ fontSize: 12, color: seedMsg.startsWith("✓") ? "#3B6D11" : "var(--crimson)", marginTop: 10 }}>
+              <p style={{ fontSize: 12, marginTop: 12, lineHeight: 1.5,
+                color: seedMsgType === "success" ? "#3B6D11" : "var(--crimson)" }}>
                 {seedMsg}
               </p>
             )}
             <button type="submit" className="btn-primary" disabled={seeding} style={{ width: "100%", marginTop: 14 }}>
-              {seeding ? "Saving..." : "Save metrics"}
+              {seeding ? "Saving..." : slugStatus === "exists" ? "Update journal metrics" : "Save journal metrics"}
             </button>
           </form>
 
           {/* Crossref search */}
-          <span className="section-label">Find a journal slug</span>
+          <span className="section-label">Find a journal slug via Crossref</span>
           <div className="card">
+            <p style={{ fontSize: 12, color: "var(--ink-muted)", marginBottom: 12, lineHeight: 1.5 }}>
+              Search by journal name to confirm it's a T&F journal and get its ISSN.
+              The slug is the code at the end of the T&F URL — e.g. <code style={{ fontSize: 11 }}>tandfonline.com/journals/<strong>ipmt20</strong></code>
+            </p>
             <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-              <input placeholder="Search by journal name..." value={search}
-                onChange={e => setSearch(e.target.value)}
+              <input placeholder="e.g. Pain Management, Studies in Higher Education..."
+                value={search} onChange={e => setSearch(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleSearch()} style={{ flex: 1 }} />
               <button className="btn-primary" onClick={handleSearch} disabled={searching}>
                 {searching ? "..." : "Search"}
@@ -183,13 +274,28 @@ export default function JournalComparator() {
             {searchResults.map((r, i) => (
               <div key={i} style={{ fontSize: 12, padding: "10px 0",
                 borderTop: i > 0 ? "1px solid var(--linen-border)" : "none" }}>
-                <div style={{ fontWeight: 500, color: "var(--navy)", marginBottom: 2 }}>{r.title}</div>
-                <div style={{ color: "var(--ink-muted)" }}>ISSN: {r.issn?.join(", ") || "—"}</div>
-                <div style={{ color: "var(--ink-muted)", marginTop: 2, fontSize: 11 }}>{r.next_step}</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div>
+                    <div style={{ fontWeight: 500, color: "var(--navy)", marginBottom: 2 }}>{r.title}</div>
+                    <div style={{ color: "var(--ink-muted)" }}>ISSN: {r.issn?.join(", ") || "—"} · {r.publisher}</div>
+                    <div style={{ color: "var(--ink-muted)", marginTop: 2, fontSize: 11 }}>{r.next_step}</div>
+                  </div>
+                  <button
+                    className="btn-ghost"
+                    style={{ fontSize: 11, flexShrink: 0, marginLeft: 12 }}
+                    onClick={() => prefillFromSearch(r)}
+                  >
+                    Use name →
+                  </button>
+                </div>
               </div>
             ))}
             {!searching && search.length > 1 && searchResults.length === 0 && (
-              <p style={{ fontSize: 12, color: "var(--ink-muted)" }}>No results — try tandfonline.com directly.</p>
+              <p style={{ fontSize: 12, color: "var(--ink-muted)" }}>
+                No T&F results found. Try searching on{" "}
+                <a href="https://www.tandfonline.com" target="_blank" rel="noopener noreferrer"
+                  style={{ color: "var(--navy-light)" }}>tandfonline.com</a> directly.
+              </p>
             )}
           </div>
         </div>

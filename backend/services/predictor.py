@@ -189,25 +189,53 @@ def _status_explanation(status: EMStatus) -> str:
 
 def _dynamic_overdue(status: EMStatus, metrics: dict) -> int:
     """
-    Scale the overdue threshold using the journal's own published metrics.
-    This is the key fix — different journals have vastly different speeds
-    (T&F range confirmed: 47–233 days for first decision across journals).
+    Return the overdue threshold (days) for a given status.
+    Below this number = not yet concerning.
+    Above this number = risk starts climbing.
+
+    For With Editor and Under Review we scale against the journal's own
+    published metrics since these vary enormously across T&F journals.
+    All other statuses use fixed empirical thresholds.
     """
-    base = STAGE_CONFIG.get(status, {}).get("overdue_at", 30)
+    if status == EMStatus.submitted:
+        # System processing — genuinely should be 1-3 days.
+        # But 14 days is "slow" not "emergency" — set threshold high enough
+        # that normal admin delays don't trigger high risk.
+        return 14
 
     if status == EMStatus.with_editor:
-        # Journal's avg_first_decision includes desk rejects.
-        # Papers going to full review wait avg_first * 1.8 in "With Editor"
-        # (desk rejects pull the published avg way down)
         avg_first = metrics.get("avg_first_decision_days", 22)
-        return max(25, int(avg_first * 1.8))
+        # T&F's published first-decision average includes fast desk rejects.
+        # Papers that survive desk review and go to full peer review wait
+        # substantially longer. Multiplier of 2.5 calibrates so that:
+        #   90 days With Editor → high risk
+        #   120+ days With Editor → severe
+        return max(35, int(avg_first * 2.5))
 
     if status == EMStatus.under_review:
-        # Use the post-review metric if available; else estimate
-        avg_review = metrics.get("avg_post_review_decision_days") or metrics.get("avg_review_days", 70)
+        avg_review = (
+            metrics.get("avg_post_review_decision_days")
+            or metrics.get("avg_review_days", 70)
+        )
         return max(50, int(avg_review * 0.9))
 
-    return base
+    if status == EMStatus.reviews_complete:
+        return 21
+
+    if status == EMStatus.decision_in_process:
+        return 14
+
+    if status == EMStatus.revision_submitted:
+        return 42
+
+    if status in (EMStatus.minor_revision, EMStatus.major_revision):
+        return 999   # ball is in author's court — never overdue
+
+    if status in TERMINAL_STATUSES:
+        return 999
+
+    # Fallback
+    return STAGE_CONFIG.get(status, {}).get("overdue_at", 30)
 
 
 # ---------------------------------------------------------------------------
@@ -234,38 +262,74 @@ def compute_overall_progress(
     current_status: EMStatus,
     metrics: dict,
 ) -> float:
-    """0–100: estimated % through the first-decision journey."""
+    """
+    0–100: estimated % through the first-decision journey.
+
+    Combines two signals:
+      1. Stage-weight: position in the expected EM flow.
+      2. Overdue-ratio: how many multiples of the overdue threshold have passed.
+
+    The overdue-ratio signal ensures severely delayed submissions show
+    realistically high progress (e.g. 474d With Editor = ~99%) rather
+    than being capped at the stage weight ceiling.
+    """
     if current_status in TERMINAL_STATUSES:
         return 100.0
     if current_status in REVISION_STATUSES:
-        return 92.0   # post-decision, pre-final
+        return 92.0
 
+    # --- Signal 1: stage-weight progress ---
     completed = 0.0
     for stage in ACTIVE_FLOW:
         if stage == current_status:
             break
         completed += STAGE_WEIGHTS.get(stage, 0.0)
 
-    # Days in current status (from timeline)
     days_in_current = 0
     for event in reversed(timeline):
         if event.status == current_status:
             days_in_current = _days_between(event.date)
             break
 
-    overdue_at      = _dynamic_overdue(current_status, metrics)
-    partial         = min(days_in_current / overdue_at, 1.0) if overdue_at else 0.0
-    current_weight  = STAGE_WEIGHTS.get(current_status, 0.0)
-    total           = completed + current_weight * partial
+    # Fallback: if current status not in timeline (e.g. user selected a status
+    # different from the initial one without logging an update), use the
+    # submission date so severely delayed papers still show correct progress.
+    if days_in_current == 0 and timeline:
+        days_in_current = _days_between(timeline[0].date)
 
-    return round(min(total * 100, 99.0), 1)
+    overdue_at     = _dynamic_overdue(current_status, metrics)
+    partial        = min(days_in_current / overdue_at, 1.0) if overdue_at else 0.0
+    current_weight = STAGE_WEIGHTS.get(current_status, 0.0)
+    stage_pct      = (completed + current_weight * partial) * 100
+
+    # --- Signal 2: overdue-ratio boost ---
+    # Once past the overdue threshold, linearly push progress toward 99%.
+    # At 1x overdue → stage_pct ceiling. At 3x overdue → 95%. At 5x → 99%.
+    # This gives a realistic reading for extreme stalls without falsely
+    # showing 100% (which means terminal/accepted).
+    overdue_ratio  = (days_in_current / overdue_at) if overdue_at else 0.0
+    if overdue_ratio > 1.0:
+        # Extra progress beyond stage ceiling, capped at 99
+        extra    = min((overdue_ratio - 1.0) / 4.0, 1.0) * (99.0 - stage_pct)
+        overdue_pct = stage_pct + extra
+    else:
+        overdue_pct = stage_pct
+
+    return round(min(overdue_pct, 99.0), 1)
 
 
 def compute_risk_score(days_in_status: int, status: EMStatus, metrics: dict) -> float:
     """
-    Risk score 0–1.
-    Uses a logistic-style curve so risk ramps up steeply once past the
-    journal-specific overdue threshold.
+    Risk score 0–1 based on ratio of days_in_status to the overdue threshold.
+
+    Calibration targets (ratio → risk level):
+      0.0–0.6  → low    (well within normal range)
+      0.6–1.0  → medium (approaching threshold)
+      1.0–2.0  → high   (past threshold, action warranted)
+      2.0+     → severe (significantly past threshold)
+
+    Ratio of 1.0 means exactly at the overdue threshold — this should be
+    medium/high boundary, NOT severe. Severe requires 2× the threshold.
     """
     if status in TERMINAL_STATUSES:
         return 0.0
@@ -273,18 +337,21 @@ def compute_risk_score(days_in_status: int, status: EMStatus, metrics: dict) -> 
         return 0.05   # ball is in author's court
 
     overdue = _dynamic_overdue(status, metrics)
-    if overdue == 0:
+    if overdue == 0 or overdue == 999:
         return 0.0
 
     ratio = days_in_status / overdue
 
-    # Piecewise logistic: low before 0.5×, steep after 1×
-    if ratio <= 0.50:
-        score = ratio * 0.30
-    elif ratio <= 1.00:
-        score = 0.15 + (ratio - 0.50) * 0.90
+    # Piecewise linear — calibrated so ratio=1.0 → score=0.55 (high boundary)
+    # and ratio=2.0 → score=0.90 (severe boundary)
+    if ratio <= 0.6:
+        score = ratio * 0.40                          # 0 → 0.24  (low)
+    elif ratio <= 1.0:
+        score = 0.24 + (ratio - 0.6) * 0.775         # 0.24 → 0.55 (medium)
+    elif ratio <= 2.0:
+        score = 0.55 + (ratio - 1.0) * 0.35          # 0.55 → 0.90 (high)
     else:
-        score = min(0.60 + (ratio - 1.00) * 0.45, 1.0)
+        score = min(0.90 + (ratio - 2.0) * 0.05, 1.0) # 0.90+ (severe)
 
     return round(score, 3)
 
@@ -297,9 +364,31 @@ def compute_recommendation(
     avg_first: int,
     avg_post_review: Optional[int] = None,
 ) -> str:
+    # Terminal — nothing to do
     if status in TERMINAL_STATUSES:
         return "No action needed — your submission has reached a final status."
 
+    # Submitted — admin stage, never needs an inquiry
+    if status == EMStatus.submitted:
+        if days_in_status <= 5:
+            return (
+                "Your submission is being processed by the journal system. "
+                "Handling Editor assignment typically takes 1–5 days. No action needed."
+            )
+        elif days_in_status <= 14:
+            return (
+                f"It has been {days_in_status} days since submission. Assignment to a Handling Editor "
+                "can occasionally take up to 2 weeks, especially around holidays or high submission periods. "
+                "No action needed yet."
+            )
+        else:
+            return (
+                f"At {days_in_status} days in 'Submitted to Journal', assignment is taking longer than usual. "
+                "Check that your submission confirmation was received and the manuscript passed technical checks. "
+                "A polite email to the editorial office to confirm receipt is reasonable."
+            )
+
+    # Revision statuses — ball is in author's court or re-review stage
     if status == EMStatus.minor_revision:
         return (
             "Focus on addressing each reviewer point carefully. Write a detailed response letter — "
@@ -320,6 +409,7 @@ def compute_recommendation(
             "expect a faster turnaround than the first round."
         )
 
+    # Active review stages — risk-level-appropriate advice
     recs = {
         RiskLevel.low: (
             f"Your submission to {journal_name} is tracking normally at {days_in_status} days. "
@@ -336,15 +426,13 @@ def compute_recommendation(
             f"Your submission ({days_in_status} days) is significantly beyond the expected timeline "
             f"for {journal_name} (published avg: {avg_first} days). A polite status inquiry is now "
             "appropriate. Email the editorial office with your submission date and EM reference number, "
-            "and ask for an estimated decision date. Research Square's reviewer service may help "
-            "speed up future submissions to T&F journals."
+            "and ask for an estimated decision date."
         ),
         RiskLevel.severe: (
-            f"At {days_in_status} days, your submission to {journal_name} is severely delayed beyond "
-            "any normal range. Send a firm but professional inquiry to the editorial office immediately. "
-            f"Reference their published average ({avg_first} days) and cite the actual elapsed time. "
-            "If no response within 14 days, consider requesting withdrawal and resubmitting elsewhere. "
-            "You are fully within your rights to withdraw at any time."
+            f"At {days_in_status} days, your submission to {journal_name} is severely delayed. "
+            f"Their published average is {avg_first} days. Send a firm but professional inquiry "
+            "to the editorial office now, citing the elapsed time and asking for a specific update. "
+            "If no response within 14 days, requesting withdrawal is a reasonable next step."
         ),
     }
     return recs.get(risk_level, "Check the journal's contact page for editorial office details.")

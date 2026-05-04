@@ -1,0 +1,70 @@
+{
+  "72fe43c1": {
+    "id": "72fe43c1",
+    "journal_slug": "ipmt20",
+    "journal_name": "Pain Management",
+    "manuscript_title": "Chronic pain outcomes in post-surgical patients",
+    "timeline": [
+      {
+        "status": "With Editor",
+        "date": "2025-01-15",
+        "note": "No desk reject received after 4 weeks",
+        "source": "author",
+        "created_at": "2026-05-04T02:08:12.559852"
+      }
+    ],
+    "created_at": "2026-05-04T02:08:12.559852",
+    "updated_at": "2026-05-04T02:08:12.559852"
+  },
+  "44d54792": {
+    "id": "44d54792",
+    "journal_slug": "tmte20",
+    "journal_name": "Medical Teacher",
+    "manuscript_title": "Simulation-based learning in clinical training",
+    "timeline": [
+      {
+        "status": "Under Review",
+        "date": "2025-03-10",
+        "note": "Two reviewers confirmed assigned",
+        "source": "author",
+        "created_at": "2026-05-04T02:12:44.066582"
+      }
+    ],
+    "created_at": "2026-05-04T02:12:44.066582",
+    "updated_at": "2026-05-04T02:12:44.066582"
+  },
+  "f5f7b9c7": {
+    "id": "f5f7b9c7",
+    "journal_slug": "rjsp20",
+    "journal_name": "Journal of Sports Sciences",
+    "manuscript_title": "VO2 max adaptations in high-altitude training",
+    "timeline": [
+      {
+        "status": "Submitted to Journal",
+        "date": "2026-04-20",
+        "note": null,
+        "source": "author",
+        "created_at": "2026-05-04T02:14:25.983862"
+      }
+    ],
+    "created_at": "2026-05-04T02:14:25.983862",
+    "updated_at": "2026-05-04T02:14:25.983862"
+  },
+  "1ee86512": {
+    "id": "1ee86512",
+    "journal_slug": "rjsp20",
+    "journal_name": "Journal of Sports Sciences",
+    "manuscript_title": "XYZ",
+    "timeline": [
+      {
+        "status": "Submitted to Journal",
+        "date": "2026-04-29",
+        "note": null,
+        "source": "author",
+        "created_at": "2026-05-04T02:29:21.088795"
+      }
+    ],
+    "created_at": "2026-05-04T02:29:21.088795",
+    "updated_at": "2026-05-04T02:29:21.088795"
+  }
+}
