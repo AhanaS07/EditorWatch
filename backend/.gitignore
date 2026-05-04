@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+
+# Virtual environment
+venv/
+env/
+.env/
+ENV/
+.venv/
+
+# Environment variables — NEVER commit these
+.env
+*.env
+
+# Data files — submissions store contains author data, never commit
+data/submissions.json
+
+# journals_cache.json is safe to commit (public T&F data)
+# demo_cases.json is safe to commit
+# seed_journals.py is safe to commit
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Render / deployment
+.render-build-time
