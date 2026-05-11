@@ -77,7 +77,8 @@ export default function JournalComparator() {
     if (fd >= pr) return `First decision (${fd}d) should be less than post-review (${pr}d) — first-decision includes fast desk rejects.`
     if (seedForm.acceptance_rate) {
       const ar = parseFloat(seedForm.acceptance_rate)
-      if (isNaN(ar) || ar <= 0 || ar > 1) return "Acceptance rate must be between 0.01 and 1.0 (e.g. 0.23 for 23%)."
+      if (isNaN(ar) || ar <= 0) return "Acceptance rate must be greater than 0 (e.g. 0.23 for 23%)."
+      if (ar >= 1) return "Acceptance rate must be less than 1.0 — no real journal accepts 100% of submissions."
     }
     return null
   }
@@ -246,10 +247,19 @@ export default function JournalComparator() {
               </div>
             </div>
             {seedMsg && (
-              <p style={{ fontSize: 12, marginTop: 12, lineHeight: 1.5,
-                color: seedMsgType === "success" ? "#3B6D11" : "var(--crimson)" }}>
-                {seedMsg}
-              </p>
+              <div style={{
+                fontSize: 13, marginTop: 12, lineHeight: 1.5,
+                padding: "10px 14px", borderRadius: 6,
+                display: "flex", alignItems: "flex-start", gap: 8,
+                ...(seedMsgType === "success"
+                  ? { color: "#14532D", background: "#F0FDF4", border: "1px solid #BBF7D0" }
+                  : { color: "#7B1D1D", background: "#FEF2F2", border: "1px solid #FECACA" }),
+              }}>
+                <span style={{ flexShrink: 0, fontWeight: 700 }}>
+                  {seedMsgType === "success" ? "✓" : "✕"}
+                </span>
+                <span>{seedMsg}</span>
+              </div>
             )}
             <button type="submit" className="btn-primary" disabled={seeding} style={{ width: "100%", marginTop: 14 }}>
               {seeding ? "Saving..." : slugStatus === "exists" ? "Update journal metrics" : "Save journal metrics"}
