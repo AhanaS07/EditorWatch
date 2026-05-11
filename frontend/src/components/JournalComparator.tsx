@@ -325,13 +325,24 @@ export default function JournalComparator() {
               )
             })}
             {!searching && search.length > 1 && searchResults.length === 0 && (
-              <p style={{ fontSize: 12, color: "var(--ink-muted)" }}>
-                No T&F results found. Try searching directly on{" "}
-                <a href={`https://www.tandfonline.com/action/doSearch?AllField=${encodeURIComponent(search)}`}
-                  target="_blank" rel="noopener noreferrer" style={{ color: "var(--navy-light)" }}>
+              <div style={{
+                fontSize: 12, color: "#7B1D1D", background: "#FEF2F2",
+                border: "1px solid #FECACA", borderRadius: 6,
+                padding: "10px 14px", lineHeight: 1.6,
+              }}>
+                <strong>No T&F journals found for "{search}".</strong> This may not be a Taylor &amp; Francis journal,
+                or it may not be registered in Crossref.
+                <br />
+                If you're sure it's a T&F journal, search for it directly on{" "}
+                <a
+                  href={`https://www.tandfonline.com/action/doSearch?AllField=${encodeURIComponent(search)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{ color: "var(--navy)", fontWeight: 500 }}
+                >
                   tandfonline.com
-                </a>.
-              </p>
+                </a>{" "}
+                — if it exists there, the slug will be visible in the URL and you can seed it manually above.
+              </div>
             )}
           </div>
         </div>

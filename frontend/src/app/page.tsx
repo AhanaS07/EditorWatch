@@ -91,8 +91,21 @@ function SubmissionDetail({ sub, onUpdateStatus, onBack }: {
   const latest = sub.submission.timeline[sub.submission.timeline.length - 1]
   return (
     <div>
-      <button className="btn-ghost" style={{ fontSize: 11, marginBottom: 20 }} onClick={onBack}>
-        ← Back to submissions
+      <button onClick={onBack} style={{
+        display: "inline-flex", alignItems: "center", gap: 6,
+        marginBottom: 22, padding: "6px 12px 6px 8px",
+        background: "var(--surface-alt)", border: "1px solid var(--linen-border)",
+        borderRadius: 6, cursor: "pointer", fontSize: 12.5,
+        color: "var(--navy)", fontFamily: "var(--font-sans)",
+        fontWeight: 500, transition: "background 0.1s",
+      }}
+        onMouseEnter={e => (e.currentTarget.style.background = "var(--linen)")}
+        onMouseLeave={e => (e.currentTarget.style.background = "var(--surface-alt)")}
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+          <path d="M9 2L4 7L9 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        Back
       </button>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
         <div>
@@ -318,6 +331,7 @@ function DisclaimerModal({ onAccept }: { onAccept: () => void }) {
 export default function App() {
   const [view, setView] = useState<View>("dashboard")
   const [detailId, setDetailId] = useState<string | null>(null)
+  const [backDestination, setBackDestination] = useState<View>("dashboard")
   const [updateTarget, setUpdateTarget] = useState<SubmissionPredictResponse | null>(null)
   const [cacheStatus, setCacheStatus] = useState<any>(null)
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false)
@@ -337,8 +351,13 @@ export default function App() {
     setDisclaimerAccepted(true)
   }
 
-  function goToDetail(id: string) {
-    setDetailId(id); setView("submission-detail")
+  function goToDetail(id: string, from: View = "submissions") {
+    setDetailId(id); setBackDestination(from); setView("submission-detail")
+  }
+
+  async function handleCreate(payload: Parameters<typeof create>[0]) {
+    const result = await create(payload)
+    goToDetail(result.submission.id, "dashboard")
   }
 
   const detailSub = detailId ? enriched.find(e => e.submission.id === detailId) ?? null : null
@@ -416,7 +435,7 @@ export default function App() {
         <div>
           <span className="section-label">Track a new submission</span>
           <div style={{ marginBottom: 28 }}>
-            <SubmissionForm onSubmit={create} />
+            <SubmissionForm onSubmit={handleCreate} />
           </div>
           <span className="section-label">Active submissions</span>
           <DelayDashboard
@@ -443,7 +462,7 @@ export default function App() {
         <SubmissionDetail
           sub={detailSub}
           onUpdateStatus={sub => setUpdateTarget(sub)}
-          onBack={() => setView("submissions")}
+          onBack={() => { setView(backDestination); setDetailId(null) }}
         />
       )}
 

@@ -92,42 +92,45 @@
     "created_at": "2026-05-04T02:14:25.983862",
     "updated_at": "2026-05-04T02:14:25.983862"
   },
-  "1ee86512": {
-    "id": "1ee86512",
-    "journal_slug": "rjsp20",
-    "journal_name": "Journal of Sports Sciences",
-    "manuscript_title": "XYZ",
+  "fdf5e529": {
+    "id": "fdf5e529",
+    "journal_slug": "rdij20",
+    "journal_name": "Digital Journalism",
+    "manuscript_title": "Algorithmic news curation and editorial accountability",
     "timeline": [
       {
-        "status": "Submitted to Journal",
-        "date": "2026-04-29",
-        "note": null,
-        "source": "author",
-        "created_at": "2026-05-04T02:29:21.088795"
-      },
-      {
         "status": "With Editor",
-        "date": "2026-05-10",
+        "date": "2026-04-01",
         "note": null,
         "source": "author",
-        "created_at": "2026-05-05T02:36:20.161198"
-      },
-      {
-        "status": "With Editor",
-        "date": "2026-05-05",
-        "note": null,
-        "source": "author",
-        "created_at": "2026-05-05T02:37:35.481839"
-      },
-      {
-        "status": "Decision in Process",
-        "date": "2026-06-27",
-        "note": null,
-        "source": "author",
-        "created_at": "2026-05-05T02:38:03.512809"
+        "created_at": "2026-05-11T05:36:00.636438"
       }
     ],
-    "created_at": "2026-05-04T02:29:21.088795",
-    "updated_at": "2026-05-05T02:38:03.512809"
+    "created_at": "2026-05-11T05:36:00.636438",
+    "updated_at": "2026-05-11T05:36:00.636438"
+  },
+  "f297e36a": {
+    "id": "f297e36a",
+    "journal_slug": "cshe20",
+    "journal_name": "Studies in Higher Education",
+    "manuscript_title": "ABC",
+    "timeline": [
+      {
+        "status": "Under Review",
+        "date": "2026-03-20",
+        "note": null,
+        "source": "author",
+        "created_at": "2026-05-11T06:47:52.114379"
+      },
+      {
+        "status": "Minor Revision",
+        "date": "2026-05-11",
+        "note": null,
+        "source": "author",
+        "created_at": "2026-05-11T06:48:24.701803"
+      }
+    ],
+    "created_at": "2026-05-11T06:47:52.114379",
+    "updated_at": "2026-05-11T06:48:24.701803"
   }
 }
