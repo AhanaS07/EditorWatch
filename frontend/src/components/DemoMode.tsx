@@ -37,8 +37,9 @@ export default function DemoMode() {
                 display: "block", width: "100%", textAlign: "left", padding: "10px 16px",
                 cursor: "pointer", fontFamily: "var(--font-sans)",
                 background: selected?.id === c.id ? "var(--linen)" : "transparent",
+                borderTop: "none", borderRight: "none", borderBottom: "none",
                 borderLeft: selected?.id === c.id ? "3px solid var(--crimson)" : "3px solid transparent",
-                border: "none", transition: "all 0.1s",
+                transition: "all 0.1s",
               }}>
                 <div style={{ fontSize: 12, color: "var(--navy)", fontWeight: 500, marginBottom: 2 }}>
                   {c.journal_name}

@@ -1,52 +1,52 @@
 [
-    {
-      "id": "demo_1",
-      "label": "Pain Mgmt — 47-day 'With Editor' stall",
-      "journal_slug": "ipmt20",
-      "journal_name": "Pain Management",
-      "submission_date": "2025-02-10",
-      "current_status": "With Editor",
-      "notes": "No desk reject received, editor likely hunting for reviewers. Reddit r/academia reports this journal slow in 2025.",
-      "expected_risk": "high"
-    },
-    {
-      "id": "demo_2",
-      "label": "Global Health — Under Review, week 8",
-      "journal_slug": "tgnh20",
-      "journal_name": "Global Health",
-      "submission_date": "2025-01-28",
-      "current_status": "Under Review",
-      "notes": "Two reviewers assigned per EM log. One reviewer late.",
-      "expected_risk": "medium"
-    },
-    {
-      "id": "demo_3",
-      "label": "Postgrad Medicine — Decision In Process, 3 days",
-      "journal_slug": "upsm20",
-      "journal_name": "Postgraduate Medicine",
-      "submission_date": "2024-12-01",
-      "current_status": "Decision in Process",
-      "notes": "Reviews complete. Waiting on AE recommendation to EIC.",
-      "expected_risk": "low"
-    },
-    {
-      "id": "demo_4",
-      "label": "Nursing Mgmt — Major Revision submitted",
-      "journal_slug": "ujnm20",
-      "journal_name": "Journal of Nursing Management",
-      "submission_date": "2024-10-15",
-      "current_status": "Revision Submitted",
-      "notes": "Major revision submitted on 2025-02-01. Now back 'With Editor' for re-review assignment.",
-      "expected_risk": "medium"
-    },
-    {
-      "id": "demo_5",
-      "label": "Health Economics — 90-day 'With Editor' extreme delay",
-      "journal_slug": "nhep20",
-      "journal_name": "Health Economics Policy and Law",
-      "submission_date": "2024-11-01",
-      "current_status": "With Editor",
-      "notes": "Author contacted journal at day 60. Told 'under active consideration'. No status change in EM.",
-      "expected_risk": "severe"
-    }
-  ]
+  {
+    "id": "demo_1",
+    "label": "Postgrad Medicine — Decision In Process, day 5",
+    "journal_slug": "upsm20",
+    "journal_name": "Postgraduate Medicine",
+    "submission_date": "2026-04-30",
+    "current_status": "Decision in Process",
+    "notes": "All reviews submitted. AE has sent recommendation to EIC. A decision letter is imminent — this stage typically takes 3-14 days.",
+    "expected_risk": "low"
+  },
+  {
+    "id": "demo_2",
+    "label": "Sports Sciences — Under Review, week 8",
+    "journal_slug": "rjsp20",
+    "journal_name": "Journal of Sports Sciences",
+    "submission_date": "2026-03-06",
+    "current_status": "Under Review",
+    "notes": "Two reviewers assigned. One reviewer has submitted; second reviewer is late. Editor has sent a reminder. Approaching but not yet at the overdue threshold.",
+    "expected_risk": "medium"
+  },
+  {
+    "id": "demo_3",
+    "label": "Global Health — 75-day 'With Editor' stall",
+    "journal_slug": "tgnh20",
+    "journal_name": "Global Health Action",
+    "submission_date": "2026-02-24",
+    "current_status": "With Editor",
+    "notes": "Paper passed desk review but has been in reviewer invitation phase for over 10 weeks. Journal's published average is 18 days. Multiple reviewer invitations have likely been declined.",
+    "expected_risk": "high"
+  },
+  {
+    "id": "demo_4",
+    "label": "Studies in Higher Education — Reviews Complete, 25 days",
+    "journal_slug": "cshe20",
+    "journal_name": "Studies in Higher Education",
+    "submission_date": "2026-04-10",
+    "current_status": "Required Reviews Complete",
+    "notes": "All reviewer reports submitted 25 days ago. AE is taking longer than expected to synthesise the reviews and write a recommendation — possibly due to conflicting reviewer opinions.",
+    "expected_risk": "high"
+  },
+  {
+    "id": "demo_5",
+    "label": "Pain Management — 120-day 'With Editor' extreme delay",
+    "journal_slug": "ipmt20",
+    "journal_name": "Pain Management",
+    "submission_date": "2026-01-05",
+    "current_status": "With Editor",
+    "notes": "Author emailed editorial office at day 60 and was told the paper is under active consideration. No EM status change since submission. Now at 6x the journal's published 22-day average.",
+    "expected_risk": "severe"
+  }
+]

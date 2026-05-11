@@ -223,25 +223,49 @@ def chat(message: str, context: Optional[dict] = None) -> str:
 # Nudge email generation
 # ---------------------------------------------------------------------------
 
+_POST_REVIEW_STAGES = {
+    "Under Review",
+    "Required Reviews Complete",
+    "Decision in Process",
+    "Revision Submitted",
+}
+
+
 def generate_nudge_email(context: dict, tone: str = "polite") -> str:
     """Generate a tone-differentiated inquiry email using detailed structural briefs."""
     brief   = NUDGE_TONE_BRIEFS.get(tone, NUDGE_TONE_BRIEFS["polite"])
     journal = context.get("journal_name", "the journal")
     status  = context.get("current_status", "unknown")
     days    = context.get("days_since_submission", "?")
-    avg     = context.get("avg_first_decision_days", "?")
     title   = context.get("manuscript_title", "")
     notes   = context.get("notes", "")
+
+    # Pick the stage-appropriate benchmark:
+    # - Post-review metric for stages at/after peer review (more precise for those delays)
+    # - First-decision metric for earlier stages (desk review phase)
+    use_post_review = status in _POST_REVIEW_STAGES
+    avg_post = context.get("avg_post_review_decision_days")
+    avg_first = context.get("avg_first_decision_days")
+
+    if use_post_review and avg_post:
+        avg = avg_post
+        avg_label = f"{avg} days (journal's avg from submission to post-review decision)"
+    elif avg_first:
+        avg = avg_first
+        avg_label = f"{avg} days (journal's avg first decision, including desk rejects)"
+    else:
+        avg = avg_first or "?"
+        avg_label = f"{avg} days"
 
     try:
         excess = int(days) - int(avg)
         times  = round(int(days) / int(avg), 1)
         timing_line = (
-            f"Elapsed: {days} days. Journal avg: {avg} days. "
-            f"Excess: {excess} days ({times}x the average)."
+            f"Elapsed: {days} days. Relevant journal benchmark: {avg_label}. "
+            f"Excess: {excess} days ({times}x the benchmark)."
         )
     except (TypeError, ValueError):
-        timing_line = f"Elapsed: {days} days. Journal avg: {avg} days."
+        timing_line = f"Elapsed: {days} days. Relevant journal benchmark: {avg_label}."
 
     prompt = f"""Write an email inquiry to the editorial office of "{journal}".
 

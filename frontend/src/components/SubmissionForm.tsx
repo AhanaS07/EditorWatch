@@ -8,7 +8,7 @@ interface Props { onSubmit: (p: CreateSubmissionPayload) => Promise<void> }
 export default function SubmissionForm({ onSubmit }: Props) {
   const [form, setForm] = useState({
     journal_name: "", journal_slug: "", submission_date: "",
-    initial_status: "Submitted to Journal" as EMStatus,
+    initial_status: "" as EMStatus | "",
     manuscript_title: "", notes: "",
   })
   const [loading, setLoading] = useState(false)
@@ -17,8 +17,8 @@ export default function SubmissionForm({ onSubmit }: Props) {
 
   async function handle(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.journal_name || !form.journal_slug || !form.submission_date) {
-      setError("Journal name, slug, and submission date are required."); return
+    if (!form.journal_name || !form.journal_slug || !form.submission_date || !form.initial_status) {
+      setError("Journal name, slug, submission date, and EM status are all required."); return
     }
     setLoading(true); setError("")
     try {
@@ -31,7 +31,7 @@ export default function SubmissionForm({ onSubmit }: Props) {
         notes:            form.notes || undefined,
       })
       setForm({ journal_name: "", journal_slug: "", submission_date: "",
-        initial_status: "Submitted to Journal", manuscript_title: "", notes: "" })
+        initial_status: "", manuscript_title: "", notes: "" })
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
     } catch (e: any) { setError(e.message) }
@@ -65,6 +65,7 @@ export default function SubmissionForm({ onSubmit }: Props) {
           <label className="section-label">Current EM status</label>
           <select value={form.initial_status}
             onChange={e => setForm({ ...form, initial_status: e.target.value as EMStatus })}>
+            <option value="" disabled>Select a status…</option>
             {EM_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
@@ -80,8 +81,28 @@ export default function SubmissionForm({ onSubmit }: Props) {
           value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
           style={{ resize: "vertical" }} />
       </div>
-      {error && <p style={{ fontSize: 12, color: "var(--crimson)", marginBottom: 12 }}>{error}</p>}
-      {success && <p style={{ fontSize: 12, color: "#3B6D11", marginBottom: 12 }}>✓ Submission tracked.</p>}
+      {error && (
+        <div style={{
+          fontSize: 13, color: "#7B1D1D", background: "#FEF2F2",
+          border: "1px solid #FECACA", borderRadius: 6,
+          padding: "10px 14px", marginBottom: 12,
+          display: "flex", alignItems: "flex-start", gap: 8,
+        }}>
+          <span style={{ flexShrink: 0, fontWeight: 700 }}>✕</span>
+          <span>{error}</span>
+        </div>
+      )}
+      {success && (
+        <div style={{
+          fontSize: 13, color: "#14532D", background: "#F0FDF4",
+          border: "1px solid #BBF7D0", borderRadius: 6,
+          padding: "10px 14px", marginBottom: 12,
+          display: "flex", alignItems: "center", gap: 8,
+        }}>
+          <span style={{ flexShrink: 0, fontWeight: 700 }}>✓</span>
+          <span>Submission tracked successfully.</span>
+        </div>
+      )}
       <button type="submit" className="btn-primary" disabled={loading}>
         {loading ? "Checking..." : "Track this submission →"}
       </button>

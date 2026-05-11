@@ -480,9 +480,10 @@ def build_prediction(
     days_since_submission  = _days_between(submission_date)
     days_in_current_status = _days_between(status_date)
 
-    avg_first      = metrics.get("avg_first_decision_days", 22)
-    avg_post_review = metrics.get("avg_post_review_decision_days") or metrics.get("avg_review_days", 70)
-    avg_total      = avg_post_review + metrics.get("avg_acceptance_to_pub_days", 60)
+    avg_first       = metrics.get("avg_first_decision_days") or 22
+    avg_post_review = metrics.get("avg_post_review_decision_days") or metrics.get("avg_review_days") or 70
+    avg_pub         = metrics.get("avg_acceptance_to_pub_days") or 60
+    avg_total       = avg_post_review + avg_pub
 
     # pct_of_average: compare against post-review metric (the meaningful one)
     pct_of_avg = round(days_since_submission / avg_post_review, 2) if avg_post_review else 0.0

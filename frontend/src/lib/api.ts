@@ -10,10 +10,15 @@ import {
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
 async function req<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  })
+  let res: Response
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      headers: { "Content-Type": "application/json" },
+      ...options,
+    })
+  } catch {
+    throw new Error("Could not reach the server. Make sure the backend is running.")
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }))
     throw new Error(typeof err.detail === "string" ? err.detail : JSON.stringify(err.detail))

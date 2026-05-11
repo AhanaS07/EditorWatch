@@ -11,10 +11,45 @@
         "note": "No desk reject received after 4 weeks",
         "source": "author",
         "created_at": "2026-05-04T02:08:12.559852"
+      },
+      {
+        "status": "Revision Submitted",
+        "date": "2026-01-10",
+        "note": null,
+        "source": "author",
+        "created_at": "2026-05-05T02:21:52.255823"
+      },
+      {
+        "status": "Revision Submitted",
+        "date": "2026-01-10",
+        "note": null,
+        "source": "author",
+        "created_at": "2026-05-05T02:21:54.614858"
+      },
+      {
+        "status": "Revision Submitted",
+        "date": "2026-01-10",
+        "note": null,
+        "source": "author",
+        "created_at": "2026-05-05T02:21:55.208000"
+      },
+      {
+        "status": "Revision Submitted",
+        "date": "2026-01-10",
+        "note": null,
+        "source": "author",
+        "created_at": "2026-05-05T02:21:55.706104"
+      },
+      {
+        "status": "Revision Submitted",
+        "date": "2026-01-10",
+        "note": null,
+        "source": "author",
+        "created_at": "2026-05-05T02:21:56.189379"
       }
     ],
     "created_at": "2026-05-04T02:08:12.559852",
-    "updated_at": "2026-05-04T02:08:12.559852"
+    "updated_at": "2026-05-05T02:21:56.189379"
   },
   "44d54792": {
     "id": "44d54792",
@@ -28,10 +63,17 @@
         "note": "Two reviewers confirmed assigned",
         "source": "author",
         "created_at": "2026-05-04T02:12:44.066582"
+      },
+      {
+        "status": "Accepted",
+        "date": "2026-01-01",
+        "note": null,
+        "source": "author",
+        "created_at": "2026-05-05T04:37:14.210022"
       }
     ],
     "created_at": "2026-05-04T02:12:44.066582",
-    "updated_at": "2026-05-04T02:12:44.066582"
+    "updated_at": "2026-05-05T04:37:14.210022"
   },
   "f5f7b9c7": {
     "id": "f5f7b9c7",
@@ -62,9 +104,30 @@
         "note": null,
         "source": "author",
         "created_at": "2026-05-04T02:29:21.088795"
+      },
+      {
+        "status": "With Editor",
+        "date": "2026-05-10",
+        "note": null,
+        "source": "author",
+        "created_at": "2026-05-05T02:36:20.161198"
+      },
+      {
+        "status": "With Editor",
+        "date": "2026-05-05",
+        "note": null,
+        "source": "author",
+        "created_at": "2026-05-05T02:37:35.481839"
+      },
+      {
+        "status": "Decision in Process",
+        "date": "2026-06-27",
+        "note": null,
+        "source": "author",
+        "created_at": "2026-05-05T02:38:03.512809"
       }
     ],
     "created_at": "2026-05-04T02:29:21.088795",
-    "updated_at": "2026-05-04T02:29:21.088795"
+    "updated_at": "2026-05-05T02:38:03.512809"
   }
 }

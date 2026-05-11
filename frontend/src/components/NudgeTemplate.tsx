@@ -1,8 +1,9 @@
 "use client"
-import { useState } from "react"
-import { EM_STATUSES, EMStatus } from "@/lib/types"
+import { useState, useEffect } from "react"
+import { EM_STATUSES, EMStatus, JournalMetrics } from "@/lib/types"
 import { useChat } from "@/hooks/useChat"
 import { copyToClipboard } from "@/lib/utils"
+import { getJournal } from "@/lib/api"
 
 const TONES = [
   { id: "polite", label: "Polite",  desc: "Patient, acknowledges editor workload" },
@@ -10,25 +11,71 @@ const TONES = [
   { id: "urgent", label: "Urgent",  desc: "Clear urgency, requests a specific ETA" },
 ]
 
+// For these statuses, the post-review metric is the meaningful benchmark
+const POST_REVIEW_STAGES: EMStatus[] = [
+  "Under Review",
+  "Required Reviews Complete",
+  "Decision in Process",
+  "Revision Submitted",
+]
+
 interface Props {
   prefillJournal?: string
   prefillStatus?: EMStatus
   prefillDays?: number
   prefillAvg?: number
+  onNavigateToJournals?: () => void
 }
 
-export default function NudgeTemplate({ prefillJournal, prefillStatus, prefillDays, prefillAvg }: Props) {
+export default function NudgeTemplate({ prefillJournal, prefillStatus, prefillDays, prefillAvg, onNavigateToJournals }: Props) {
   const [form, setForm] = useState({
-    journal_name:            prefillJournal || "",
-    current_status:          prefillStatus || "With Editor" as EMStatus,
-    days_since_submission:   prefillDays || 0,
-    avg_first_decision_days: prefillAvg || 0,
-    manuscript_title:        "",
-    notes:                   "",
+    journal_name:                  prefillJournal || "",
+    journal_slug:                  "",
+    current_status:                prefillStatus || "With Editor" as EMStatus,
+    days_since_submission:         prefillDays || 0,
+    avg_first_decision_days:       prefillAvg || 0,
+    avg_post_review_decision_days: 0,
+    manuscript_title:              "",
+    notes:                         "",
   })
   const [tone, setTone] = useState("polite")
   const [copied, setCopied] = useState(false)
+  const [fetchedMetrics, setFetchedMetrics] = useState<JournalMetrics | null>(null)
+  const [fetchingMetrics, setFetchingMetrics] = useState(false)
+  const [slugError, setSlugError] = useState("")
   const { response, loading, error, nudge, setResponse } = useChat()
+
+  // Debounced slug → fetch journal metrics
+  useEffect(() => {
+    const slug = form.journal_slug.trim().toLowerCase()
+    if (!slug) {
+      setFetchedMetrics(null)
+      setSlugError("")
+      return
+    }
+    const timer = setTimeout(async () => {
+      setFetchingMetrics(true)
+      setSlugError("")
+      try {
+        const metrics = await getJournal(slug)
+        setFetchedMetrics(metrics)
+        setForm(f => ({
+          ...f,
+          journal_name:                  f.journal_name || metrics.name,
+          avg_first_decision_days:       metrics.avg_first_decision_days ?? f.avg_first_decision_days,
+          avg_post_review_decision_days: metrics.avg_post_review_decision_days ?? f.avg_post_review_decision_days,
+        }))
+      } catch (e: any) {
+        setFetchedMetrics(null)
+        setSlugError(e.message)
+      } finally {
+        setFetchingMetrics(false)
+      }
+    }, 600)
+    return () => clearTimeout(timer)
+  }, [form.journal_slug])
+
+  const isPostReviewStage = POST_REVIEW_STAGES.includes(form.current_status)
 
   function handleCopy() {
     copyToClipboard(response)
@@ -43,11 +90,52 @@ export default function NudgeTemplate({ prefillJournal, prefillStatus, prefillDa
         <span className="section-label">Submission context</span>
         <div className="card" style={{ marginBottom: 16 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
             <div>
               <label className="section-label">Journal name</label>
               <input placeholder="e.g. Pain Management" value={form.journal_name}
                 onChange={e => setForm({ ...form, journal_name: e.target.value })} />
             </div>
+
+            <div>
+              <label className="section-label">Journal slug</label>
+              <div style={{ position: "relative" }}>
+                <input
+                  placeholder="e.g. ipmt20"
+                  value={form.journal_slug}
+                  onChange={e => setForm({ ...form, journal_slug: e.target.value })}
+                  style={{ paddingRight: 28 }}
+                />
+                {fetchingMetrics && (
+                  <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
+                    fontSize: 11, color: "var(--ink-muted)" }}>…</span>
+                )}
+                {fetchedMetrics && !fetchingMetrics && (
+                  <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
+                    fontSize: 11, color: "#14532D", fontWeight: 700 }}>✓</span>
+                )}
+              </div>
+              {slugError && (
+                <p style={{ fontSize: 10, color: "var(--crimson)", marginTop: 3 }}>
+                  Journal not in cache — reseed it from the{" "}
+                  {onNavigateToJournals ? (
+                    <button onClick={onNavigateToJournals} style={{
+                      background: "none", border: "none", padding: 0, cursor: "pointer",
+                      color: "var(--navy)", fontSize: 10, textDecoration: "underline",
+                      fontFamily: "inherit",
+                    }}>
+                      Journal browser
+                    </button>
+                  ) : (
+                    <span style={{ color: "var(--navy)" }}>Journal browser</span>
+                  )}{" "}tab.
+                </p>
+              )}
+              <p style={{ fontSize: 10, color: "var(--ink-muted)", marginTop: 3 }}>
+                From tandfonline.com/journals/<strong>slug</strong>/about-this-journal
+              </p>
+            </div>
+
             <div>
               <label className="section-label">Current EM status</label>
               <select value={form.current_status}
@@ -55,18 +143,67 @@ export default function NudgeTemplate({ prefillJournal, prefillStatus, prefillDa
                 {EM_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <div>
-                <label className="section-label">Days since submission</label>
-                <input type="number" min={0} value={form.days_since_submission || ""}
-                  onChange={e => setForm({ ...form, days_since_submission: parseInt(e.target.value) || 0 })} />
-              </div>
-              <div>
-                <label className="section-label">Journal avg (days)</label>
-                <input type="number" min={0} value={form.avg_first_decision_days || ""}
-                  onChange={e => setForm({ ...form, avg_first_decision_days: parseInt(e.target.value) || 0 })} />
+
+            <div>
+              <label className="section-label">Days since submission</label>
+              <input type="number" min={0} value={form.days_since_submission || ""}
+                onChange={e => setForm({ ...form, days_since_submission: parseInt(e.target.value) || 0 })} />
+            </div>
+
+            {/* Stage-aware dual metric display */}
+            <div>
+              <label className="section-label" style={{ marginBottom: 6, display: "block" }}>
+                Journal benchmarks
+                {fetchedMetrics && (
+                  <span style={{ fontSize: 9, color: "var(--ink-muted)", fontWeight: 400, marginLeft: 6 }}>
+                    auto-filled from {fetchedMetrics.name}
+                  </span>
+                )}
+              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                <div style={{
+                  padding: "8px 10px", borderRadius: 5,
+                  border: !isPostReviewStage ? "1px solid var(--navy-light)" : "1px solid var(--linen-border)",
+                  background: !isPostReviewStage ? "var(--linen)" : "transparent",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+                    <label className="section-label" style={{ marginBottom: 0 }}>Avg first decision</label>
+                    {!isPostReviewStage && (
+                      <span style={{ fontSize: 9, color: "var(--navy)", fontWeight: 600, whiteSpace: "nowrap" }}>
+                        ← your stage
+                      </span>
+                    )}
+                  </div>
+                  <input type="number" min={0}
+                    value={form.avg_first_decision_days || ""}
+                    onChange={e => setForm({ ...form, avg_first_decision_days: parseInt(e.target.value) || 0 })}
+                    style={{ background: "transparent" }}
+                  />
+                  <p style={{ fontSize: 9, color: "var(--ink-muted)", marginTop: 2 }}>incl. desk rejects</p>
+                </div>
+                <div style={{
+                  padding: "8px 10px", borderRadius: 5,
+                  border: isPostReviewStage ? "1px solid var(--navy-light)" : "1px solid var(--linen-border)",
+                  background: isPostReviewStage ? "var(--linen)" : "transparent",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+                    <label className="section-label" style={{ marginBottom: 0 }}>Avg post-review</label>
+                    {isPostReviewStage && (
+                      <span style={{ fontSize: 9, color: "var(--navy)", fontWeight: 600, whiteSpace: "nowrap" }}>
+                        ← your stage
+                      </span>
+                    )}
+                  </div>
+                  <input type="number" min={0}
+                    value={form.avg_post_review_decision_days || ""}
+                    onChange={e => setForm({ ...form, avg_post_review_decision_days: parseInt(e.target.value) || 0 })}
+                    style={{ background: "transparent" }}
+                  />
+                  <p style={{ fontSize: 9, color: "var(--ink-muted)", marginTop: 2 }}>after peer review</p>
+                </div>
               </div>
             </div>
+
             <div>
               <label className="section-label">Manuscript title (optional)</label>
               <input placeholder="Title as submitted" value={form.manuscript_title}

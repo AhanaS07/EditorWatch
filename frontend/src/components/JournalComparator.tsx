@@ -257,44 +257,70 @@ export default function JournalComparator() {
           </form>
 
           {/* Crossref search */}
-          <span className="section-label">Find a journal slug via Crossref</span>
+          <span className="section-label">Find a journal via Crossref</span>
           <div className="card">
-            <p style={{ fontSize: 12, color: "var(--ink-muted)", marginBottom: 12, lineHeight: 1.5 }}>
-              Search by journal name to confirm it's a T&F journal and get its ISSN.
-              The slug is the code at the end of the T&F URL — e.g. <code style={{ fontSize: 11 }}>tandfonline.com/journals/<strong>ipmt20</strong></code>
+            <p style={{ fontSize: 12, color: "var(--ink-muted)", marginBottom: 12, lineHeight: 1.6 }}>
+              Search by journal name to confirm it's a T&F journal. Crossref gives you the ISSN —
+              use the link below each result to open the journal on tandfonline.com,
+              where the <strong style={{ color: "var(--navy)" }}>slug appears in the URL</strong>{" "}
+              (e.g. <code style={{ fontSize: 11 }}>tandfonline.com/journals/<strong>ipmt20</strong></code>).
             </p>
             <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-              <input placeholder="e.g. Pain Management, Studies in Higher Education..."
+              <input placeholder="e.g. Annals of Medicine, Eating Disorders..."
                 value={search} onChange={e => setSearch(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleSearch()} style={{ flex: 1 }} />
               <button className="btn-primary" onClick={handleSearch} disabled={searching}>
                 {searching ? "..." : "Search"}
               </button>
             </div>
-            {searchResults.map((r, i) => (
-              <div key={i} style={{ fontSize: 12, padding: "10px 0",
-                borderTop: i > 0 ? "1px solid var(--linen-border)" : "none" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div>
-                    <div style={{ fontWeight: 500, color: "var(--navy)", marginBottom: 2 }}>{r.title}</div>
-                    <div style={{ color: "var(--ink-muted)" }}>ISSN: {r.issn?.join(", ") || "—"} · {r.publisher}</div>
-                    <div style={{ color: "var(--ink-muted)", marginTop: 2, fontSize: 11 }}>{r.next_step}</div>
+            {searchResults.map((r, i) => {
+              // Build a direct T&F search link using the ISSN — takes user
+              // straight to the journal page where slug is visible in the URL
+              const issn = r.issn?.[0] || ""
+              const tfBrowseUrl = issn
+                ? `https://www.tandfonline.com/action/doSearch?AllField=${encodeURIComponent(issn)}`
+                : `https://www.tandfonline.com/action/doSearch?AllField=${encodeURIComponent(r.title)}`
+
+              return (
+                <div key={i} style={{ fontSize: 12, padding: "12px 0",
+                  borderTop: i > 0 ? "1px solid var(--linen-border)" : "none" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 500, color: "var(--navy)", marginBottom: 3, fontSize: 13 }}>{r.title}</div>
+                      <div style={{ color: "var(--ink-muted)", marginBottom: 4 }}>
+                        ISSN: <strong>{r.issn?.join(", ") || "—"}</strong> · {r.publisher}
+                      </div>
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        <a href={tfBrowseUrl} target="_blank" rel="noopener noreferrer"
+                          style={{ fontSize: 11, color: "var(--navy-light)", textDecoration: "underline" }}>
+                          Find on tandfonline.com → (slug is in the URL)
+                        </a>
+                      </div>
+                      <div style={{ marginTop: 6, padding: "6px 10px",
+                        background: "var(--linen)", borderRadius: 4, fontSize: 11, color: "var(--ink-mid)" }}>
+                        <strong>How to get the slug:</strong> Click the link above → find your journal in the T&F search results →
+                        click through to the journal page → look at the URL and copy the short code after /journals/, 
+                        e.g. <code>tandfonline.com/journals/<strong style={{ color: "var(--crimson)" }}>ipmt20</strong></code> → paste that code into the slug field in the seed form above
+                      </div>
+                    </div>
+                    <button
+                      className="btn-ghost"
+                      style={{ fontSize: 11, flexShrink: 0 }}
+                      onClick={() => prefillFromSearch(r)}
+                    >
+                      Use name →
+                    </button>
                   </div>
-                  <button
-                    className="btn-ghost"
-                    style={{ fontSize: 11, flexShrink: 0, marginLeft: 12 }}
-                    onClick={() => prefillFromSearch(r)}
-                  >
-                    Use name →
-                  </button>
                 </div>
-              </div>
-            ))}
+              )
+            })}
             {!searching && search.length > 1 && searchResults.length === 0 && (
               <p style={{ fontSize: 12, color: "var(--ink-muted)" }}>
-                No T&F results found. Try searching on{" "}
-                <a href="https://www.tandfonline.com" target="_blank" rel="noopener noreferrer"
-                  style={{ color: "var(--navy-light)" }}>tandfonline.com</a> directly.
+                No T&F results found. Try searching directly on{" "}
+                <a href={`https://www.tandfonline.com/action/doSearch?AllField=${encodeURIComponent(search)}`}
+                  target="_blank" rel="noopener noreferrer" style={{ color: "var(--navy-light)" }}>
+                  tandfonline.com
+                </a>.
               </p>
             )}
           </div>

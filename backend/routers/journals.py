@@ -130,10 +130,13 @@ async def cache_status():
 async def search_journals(q: str = Query(..., min_length=2)):
     """Search Crossref for T&F journals by name to find the slug."""
     try:
-        async with httpx.AsyncClient(timeout=8) as client:
+        async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(
                 "https://api.crossref.org/journals",
-                params={"query": q, "filter": "publisher-name:Taylor", "rows": 10},
+                params={
+                    "query": q,
+                    "rows":  20,   # fetch more since we post-filter for T&F
+                },
                 headers={"User-Agent": "EditorWatch/1.0 (mailto:editorwatch@example.com)"},
             )
             resp.raise_for_status()
@@ -142,18 +145,23 @@ async def search_journals(q: str = Query(..., min_length=2)):
         results = []
         for item in items:
             pub = item.get("publisher", "")
-            if "taylor" not in pub.lower() and "francis" not in pub.lower():
+            # T&F is registered as "Taylor & Francis", "Taylor & Francis Ltd",
+            # or "Informa UK Limited" (parent company) in Crossref
+            is_tf = (
+                "taylor" in pub.lower()
+                or "francis" in pub.lower()
+                or "informa" in pub.lower()
+                or "tandfonline" in pub.lower()
+            )
+            if not is_tf:
                 continue
-            url  = item.get("URL", "")
-            # Extract slug from URL if possible: api.crossref.org/journals/10.xxxx
-            # T&F slug is on their own site, not crossref — give hint
             results.append({
                 "title":        item.get("title", ""),
                 "issn":         item.get("ISSN", []),
                 "publisher":    pub,
-                "crossref_url": url,
-                "next_step":    (
-                    "Search this journal on https://www.tandfonline.com — "
+                "crossref_url": item.get("URL", ""),
+                "next_step": (
+                    "Find this journal on https://www.tandfonline.com — "
                     "the slug is the code at the end of the URL, e.g. 'ipmt20'"
                 ),
             })

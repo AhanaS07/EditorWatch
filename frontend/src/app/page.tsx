@@ -458,7 +458,7 @@ export default function App() {
 
       {view === "decoder" && <StatusDecoder key="decoder" />}
 
-      {view === "templates" && <NudgeTemplate />}
+      {view === "templates" && <NudgeTemplate onNavigateToJournals={() => setView("journals")} />}
 
       {view === "journals" && <JournalComparator />}
 
